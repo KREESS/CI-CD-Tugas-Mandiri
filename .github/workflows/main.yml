@@ -132,7 +132,7 @@ jobs:
             --header "Content-Type: application/json" \
             --data '{
               "parse_mode": "HTML",
-              "chat_id": "${{ secrets.TELEGRAM_CHANNEL }}",
+              "chat_id": "'${{ secrets.TELEGRAM_CHANNEL }}'",
               "text": "%0A📝 Status: '"$STATUS"'%0A📝 Commit: '"$GITHUB_SHA"'%0A📝 Branch: '"$GITHUB_REF_NAME"'%0A💬 Message: <b>'"${{ github.event.head_commit.message }}'</b>%0ACek disini: '"$CURRENT_REPO"'
             }'
 
@@ -169,7 +169,6 @@ jobs:
           else
             echo "Artifact file not found!"
           fi
-      
 
       - name: Unzip artifact
         run: unzip -o artifact.zip
