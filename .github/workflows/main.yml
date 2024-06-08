@@ -128,11 +128,11 @@ jobs:
             STATUS="CI/CD Pipeline <b>Failure ❌</b>"
           fi
           curl --request POST \
-            --url "https://api.telegram.org/bot7067631938:AAG-h8NPOTQVQ-MpN-jc9JkFwcDaD5mIahw/sendMessage" \
+            --url "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT }}/sendMessage" \
             --header "Content-Type: application/json" \
             --data '{
               "parse_mode": "HTML",
-              "chat_id": "1671413490",
+              "chat_id": "'${{ secrets.TELEGRAM_CHANNEL }}'",
               "text": "%0A📝 Status: '"$STATUS"'%0A📝 Commit: '"$GITHUB_SHA"'%0A📝 Branch: '"$GITHUB_REF_NAME"'%0A💬 Message: <b>'"${{ github.event.head_commit.message }}'</b>%0ACek disini: '"$CURRENT_REPO"'
             }'
 
