@@ -1,4 +1,4 @@
-name: Laravel CI
+name: Laravel CI/CD
 
 on:
   push:
@@ -15,14 +15,14 @@ jobs:
     env:
       DB_DATABASE: blogcms
       DB_USERNAME: root
-      DB_PASSWORD: password
+      DB_PASSWORD:
       BROADCAST_DRIVER: log
     services:
       mysql:
         image: mysql:5.7
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: false
-          MYSQL_ROOT_PASSWORD: password
+          MYSQL_ROOT_PASSWORD:
           MYSQL_DATABASE: blogcms
         ports:
           - 3306/tcp
@@ -87,14 +87,14 @@ jobs:
     env:
       DB_DATABASE: blogcms
       DB_USERNAME: root
-      DB_PASSWORD: password
+      DB_PASSWORD:
       BROADCAST_DRIVER: log
     services:
       mysql:
         image: mysql:5.7
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: false
-          MYSQL_ROOT_PASSWORD: password
+          MYSQL_ROOT_PASSWORD:
           MYSQL_DATABASE: blogcms
         ports:
           - 3306/tcp
