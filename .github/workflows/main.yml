@@ -127,16 +127,14 @@ jobs:
           else
             STATUS="CI/CD Pipeline <b>Failure ❌</b>"
           fi
-          curl --request POST ${{ secrets.TELEGRAM_BOT }} \
-            -d parse_mode="HTML" \
-            -d chat_id="${{ secrets.TELEGRAM_CHANNEL }}" \
-            -d text="
-            %0A📝 Status: $STATUS
-            %0A📝 Commit: $GITHUB_SHA
-            %0A📝 Branch: $GITHUB_REF_NAME
-            %0A💬 Message: <b>${{ github.event.head_commit.message }}</b>
-            %0ACek disini: $CURRENT_REPO
-            "
+          curl --request POST \
+            --url "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT }}/sendMessage" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "parse_mode": "HTML",
+              "chat_id": "${{ secrets.TELEGRAM_CHANNEL }}",
+              "text": "%0A📝 Status: '"$STATUS"'%0A📝 Commit: '"$GITHUB_SHA"'%0A📝 Branch: '"$GITHUB_REF_NAME"'%0A💬 Message: <b>'"${{ github.event.head_commit.message }}'</b>%0ACek disini: '"$CURRENT_REPO"'
+            }'
 
   deploy:
     name: Deploy
