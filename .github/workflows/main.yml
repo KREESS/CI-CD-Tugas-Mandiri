@@ -39,7 +39,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: "8.2"
           extensions: mbstring, pdo, mysql, gd
 
       - name: Install dependencies
@@ -51,6 +51,11 @@ jobs:
       - name: Generate key
         run: php artisan key:generate
 
+      - name: Run Migration Database
+        run: php artisan migrate:fresh --seed
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
@@ -61,7 +66,7 @@ jobs:
 
       - name: Build Node.JS
         run: npm run build
-
+        
       - name: Create artifact
         run: zip -r artifact.zip .
 
