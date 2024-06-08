@@ -1,0 +1,228 @@
+name: Laravel CI # Menyatakan nama pipeline GitHub Actions
+
+on: # Menentukan kondisi pemicu untuk menjalankan pipeline
+  push: # Menjalankan pipeline ketika ada push
+    branches: # Hanya untuk branch yang disebutkan
+      - main # Branch "main"
+  pull_request: # Menjalankan pipeline ketika ada pull request
+    branches: # Hanya untuk branch yang disebutkan
+      - main # Branch "main"
+
+jobs: # Daftar pekerjaan dalam pipeline
+  laravel_build: # Nama pekerjaan pertama
+    name: Laravel Build # Nama pekerjaan yang akan ditampilkan di GitHub
+    runs-on: ubuntu-latest # Menggunakan runner Ubuntu terbaru
+    env: # Menentukan variabel lingkungan
+      DB_DATABASE: blogcms # Nama database
+      DB_USERNAME: root # Username database
+      DB_PASSWORD: password # Password database
+      BROADCAST_DRIVER: log # Driver broadcast
+
+    services: # Menentukan layanan yang dibutuhkan
+      mysql: # Menggunakan layanan MySQL
+        image: mysql:5.7 # Gambar Docker untuk MySQL versi 5.7
+        env: # Variabel lingkungan untuk MySQL
+          MYSQL_ALLOW_EMPTY_PASSWORD: false # Tidak mengizinkan password kosong
+          MYSQL_ROOT_PASSWORD: password # Password root untuk MySQL
+          MYSQL_DATABASE: blogcms # Nama database
+        ports: # Port yang dipetakan
+          - 3306:3306 # Memetakan port 3306 ke 3306
+        options: >- # Opsi tambahan untuk MySQL
+          --health-cmd="mysqladmin ping --silent"  # Perintah kesehatan
+          --health-interval=10s  # Interval pemeriksaan kesehatan
+          --health-timeout=5s  # Timeout pemeriksaan kesehatan
+          --health-retries=3  # Jumlah percobaan pemeriksaan kesehatan
+
+    steps: # Langkah-langkah yang akan dijalankan
+      - name: Checkout code # Nama langkah
+        uses: actions/checkout@v2 # Menggunakan action checkout untuk mengambil kode
+
+      - name: Setup PHP # Nama langkah
+        uses: shivammathur/setup-php@v2 # Menggunakan action untuk mengatur PHP
+        with: # Parameter untuk action
+          php-version: "8.3" # Versi PHP yang digunakan
+          extensions: mbstring, pdo, mysql, gd # Ekstensi PHP yang diperlukan
+
+      - name: Install dependencies # Nama langkah
+        run: composer install --no-ansi --no-interaction --no-progress --optimize-autoloader # Perintah untuk menginstal dependensi menggunakan Composer
+
+      - name: Copy .env example # Nama langkah
+        run: cp .env.example .env # Menyalin file .env.example ke .env
+
+      - name: Generate key # Nama langkah
+        run: php artisan key:generate # Menjalankan perintah Artisan untuk menghasilkan kunci aplikasi
+
+      - name: Run Migration Database # Nama langkah
+        run: php artisan migrate:fresh --seed # Menjalankan migrasi database dan seed data
+        env: # Menentukan variabel lingkungan untuk langkah ini
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }} # Port database
+
+      - name: Setup Node.js # Nama langkah
+        uses: actions/setup-node@v2 # Menggunakan action untuk mengatur Node.js
+        with: # Parameter untuk action
+          node-version: "20" # Versi Node.js yang digunakan
+
+      - name: Install Node.js dependencies # Nama langkah
+        run: npm install # Menginstal dependensi Node.js
+
+      - name: Build Node.js # Nama langkah
+        run: npm run build # Membuat build Node.js
+
+      - name: Create artifact # Nama langkah
+        run: zip -r artifact.zip . # Membuat file zip dari semua file dalam direktori saat ini
+
+      - name: Upload artifact # Nama langkah
+        uses: actions/upload-artifact@v2 # Menggunakan action untuk mengunggah artifact
+        with: # Parameter untuk action
+          name: build-artifact # Nama artifact
+          path: artifact.zip # Jalur ke file yang akan diunggah
+          retention-days: 5 # Jumlah hari untuk menyimpan artifact
+
+  laravel_test: # Nama pekerjaan kedua
+    name: Laravel Test # Nama pekerjaan yang akan ditampilkan di GitHub
+    runs-on: ubuntu-latest # Menggunakan runner Ubuntu terbaru
+    needs: laravel_build # Menyatakan bahwa pekerjaan ini bergantung pada pekerjaan laravel_build
+    env: # Menentukan variabel lingkungan
+      DB_DATABASE: blogcms # Nama database
+      DB_USERNAME: root # Username database
+      DB_PASSWORD: password # Password database
+      BROADCAST_DRIVER: log # Driver broadcast
+
+    services: # Menentukan layanan yang dibutuhkan
+      mysql: # Menggunakan layanan MySQL
+        image: mysql:5.7 # Gambar Docker untuk MySQL versi 5.7
+        env: # Variabel lingkungan untuk MySQL
+          MYSQL_ALLOW_EMPTY_PASSWORD: false # Tidak mengizinkan password kosong
+          MYSQL_ROOT_PASSWORD: password # Password root untuk MySQL
+          MYSQL_DATABASE: blogcms # Nama database
+        ports: # Port yang dipetakan
+          - 3306:3306 # Memetakan port 3306 ke 3306
+        options: >- # Opsi tambahan untuk MySQL
+          --health-cmd="mysqladmin ping --silent"  # Perintah kesehatan
+          --health-interval=10s  # Interval pemeriksaan kesehatan
+          --health-timeout=5s  # Timeout pemeriksaan kesehatan
+          --health-retries=3  # Jumlah percobaan pemeriksaan kesehatan
+
+    steps: # Langkah-langkah yang akan dijalankan
+      - name: Download artifact # Nama langkah
+        uses: actions/download-artifact@v2 # Menggunakan action untuk mengunduh artifact
+        with: # Parameter untuk action
+          name: build-artifact # Nama artifact yang diunduh
+          path: . # Jalur tempat menyimpan artifact
+
+      - name: Unzip artifact # Nama langkah
+        run: unzip -o artifact.zip # Mengekstrak file zip
+
+      - name: Setup PHP # Nama langkah
+        uses: shivammathur/setup-php@v2 # Menggunakan action untuk mengatur PHP
+        with: # Parameter untuk action
+          php-version: "8.3" # Versi PHP yang digunakan
+          extensions: mbstring, pdo, mysql, gd # Ekstensi PHP yang diperlukan
+
+      - name: Run Migration Database # Nama langkah
+        run: php artisan migrate:fresh --seed # Menjalankan migrasi database dan seed data
+        env: # Menentukan variabel lingkungan untuk langkah ini
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }} # Port database
+
+      - name: Migrate PHPUnit configuration # Nama langkah
+        run: ./vendor/bin/phpunit --migrate-configuration || true # Menjalankan PHPUnit untuk migrasi konfigurasi, mengabaikan kegagalan
+
+      - name: Run tests # Nama langkah
+        run: ./vendor/bin/phpunit # Menjalankan PHPUnit untuk menjalankan tes
+        env: # Menentukan variabel lingkungan untuk langkah ini
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }} # Port database
+
+  laravel_notification: # Nama pekerjaan ketiga
+    name: Laravel Notify # Nama pekerjaan yang akan ditampilkan di GitHub
+    runs-on: ubuntu-latest # Menggunakan runner Ubuntu terbaru
+    needs: [laravel_build, laravel_test] # Menyatakan bahwa pekerjaan ini bergantung pada pekerjaan laravel_build dan laravel_test
+    if: always() # Menjalankan pekerjaan ini selalu, terlepas dari status sebelumnya
+    env: # Menentukan variabel lingkungan
+      CURRENT_REPO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} # Menentukan URL repo saat ini
+
+    steps: # Langkah-langkah yang akan dijalankan
+      - name: Notify to Telegram # Nama langkah
+        run: | # Perintah multi-baris
+          if [[ "${{ needs.laravel_build.result }}" == "success" && "${{ needs.laravel_test.result }}" == "success" ]]; then
+            STATUS="CI/CD Pipeline <b>Success ✅</b>"
+          else
+            STATUS="CI/CD Pipeline <b>Failure ❌</b>"
+          fi
+          curl --request POST ${{ secrets.TELEGRAM_BOT }} \
+            -d parse_mode="HTML" \
+            -d chat_id="${{ secrets.TELEGRAM_CHANNEL }}" \
+            -d text="
+            %0A📝 Status: $STATUS
+            %0A📝 Commit: ${{ github.sha }}
+            %0A📝 Branch: ${{ github.ref_name }}
+            %0A💬 Message: <b>${{ github.event.head_commit.message }}</b>
+            %0A🔗 Check it out here: $CURRENT_REPO
+            "
+
+  deploy: # Nama pekerjaan keempat
+    name: Deploy # Nama pekerjaan yang akan ditampilkan di GitHub
+    runs-on: ubuntu-latest # Menggunakan runner Ubuntu terbaru
+    needs: [laravel_build, laravel_test] # Menyatakan bahwa pekerjaan ini bergantung pada pekerjaan laravel_build dan laravel_test
+    if: always() # Menjalankan pekerjaan ini selalu, terlepas dari status sebelumnya
+    env: # Menentukan variabel lingkungan
+      CURRENT_REPO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} # Menentukan URL repo saat ini
+      ID_RSA: ${{ secrets.ID_RSA }} # Kunci SSH untuk autentikasi
+      SERVER_USER: ${{ secrets.SERVER_USER }} # Username server
+      SERVER_IP: ${{ secrets.SERVER_IP }} # Alamat IP server
+      SSH_PORT: ${{ secrets.SSH_PORT }} # Port SSH server
+
+    steps: # Langkah-langkah yang akan dijalankan
+      - name: Download artifact # Nama langkah
+        uses: actions/download-artifact@v2 # Menggunakan action untuk mengunduh artifact
+        with: # Parameter untuk action
+          name: build-artifact # Nama artifact yang diunduh
+          path: . # Jalur tempat menyimpan artifact
+
+      - name: Check if artifact exists # Nama langkah
+        run: ls -lh artifact.zip # Memeriksa apakah file artifact.zip ada
+
+      - name: Send File to Telegram # Nama langkah
+        run: | # Perintah multi-baris
+          if [ -f "artifact.zip" ]; then
+            curl --request POST ${{ secrets.TELEGRAM_DEPLOY }} \
+              --header 'Accept: */*' \
+              --form 'chat_id="${{ secrets.TELEGRAM_CHANNEL }}"' \
+              --form caption=$CURRENT_REPO \
+              --form document=@./artifact.zip
+          else
+            echo "Artifact file not found!"
+          fi
+
+      - name: Unzip artifact # Nama langkah
+        run: unzip -o artifact.zip # Mengekstrak file zip
+
+      - name: Add SSH key # Nama langkah
+        run: | # Perintah multi-baris
+          echo "${{ secrets.ID_RSA }}" > ssh_private_key_cicd_polindra
+          chmod 600 ssh_private_key_cicd_polindra
+
+      - name: Delete artifact.zip on Server Cloud # Nama langkah
+        run: ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP -p $SSH_PORT 'rm -f artifact.zip' || true # Menghapus file artifact.zip di server
+
+      - name: Deploy to Server # Nama langkah
+        run: | # Perintah multi-baris
+          echo "Deploying application..."
+          chmod og= ssh_private_key_cicd_polindra
+          rm -f -R .git && rm -f artifact.zip
+          zip -r artifact.zip .
+          rsync -avz --info=progress2 -e "ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no -p $SSH_PORT" artifact.zip $SERVER_USER@$SERVER_IP:/home/polindra  # Mengirim file ke server menggunakan rsync
+
+      - name: Delete all files in deploy directory # Nama langkah
+        run: ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP -p $SSH_PORT 'rm -rf /var/www/laravel/* && rm -rf /var/www/laravel/.*' # Menghapus semua file di direktori deploy server
+
+      - name: Extract and remove artifact.zip # Nama langkah
+        run: ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP -p $SSH_PORT 'mkdir -p /var/www/laravel/ && unzip -qq -o artifact.zip -d /var/www/laravel/ && rm -f artifact.zip' # Mengekstrak file zip di server
+
+      - name: Fill .env # Nama langkah
+        run: ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP -p $SSH_PORT 'cd /var/www/laravel/ && echo "${{ secrets.ENV_FILE_CONTENT }}" > ".env"' # Mengisi file .env di server
+
+      - name: Run migration in database server and set permissions # Nama langkah
+        run: ssh -i ssh_private_key_cicd_polindra -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP -p $SSH_PORT 'cd /var/www/laravel/ && php artisan migrate --force && sudo chown polindra:www-data -R ./storage && chmod -R 775 ./storage' # Menjalankan migrasi database dan mengatur izin di server
+
+      - name: Delete SSH key # Nama langkah
+        run: rm -f ssh_private_key_cicd_polindra # Menghapus kunci SSH dari runner
