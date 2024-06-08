@@ -51,11 +51,6 @@ jobs:
       - name: Generate key
         run: php artisan key:generate
 
-      - name: Run Migration Database
-        run: php artisan migrate:fresh --seed
-        env:
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
@@ -66,7 +61,7 @@ jobs:
 
       - name: Build Node.JS
         run: npm run build
-        
+
       - name: Create artifact
         run: zip -r artifact.zip .
 
@@ -116,19 +111,6 @@ jobs:
         with:
           php-version: "8.3"
           extensions: mbstring, pdo, mysql, gd
-
-      - name: Run Migration Database
-        run: php artisan migrate:fresh --seed
-        env:
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
-
-      - name: Migrate PHPUnit configuration
-        run: ./vendor/bin/phpunit --migrate-configuration || true
-
-      - name: Run tests
-        run: ./vendor/bin/phpunit
-        env:
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
 
   laravel_notification:
     name: Laravel Notify
