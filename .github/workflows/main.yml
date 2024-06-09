@@ -149,6 +149,8 @@ jobs:
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
+      TELEGRAM_DEPLOY: ${{ secrets.TELEGRAM_DEPLOY }}
+      TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
 
     steps:
       - name: Download artifact
